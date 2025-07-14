@@ -1,0 +1,127 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const authRoutes = require('./routes/auth');
+const videoRoutes = require('./routes/video');
+const channelRoutes = require('./routes/channel');
+const commentRoutes = require('./routes/comment');
+
+const app = express();
+dotenv.config();
+
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/videos', videoRoutes);
+app.use('/api/channels', channelRoutes);
+app.use('/api/comments', commentRoutes);
+
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    app.listen(process.env.PORT || 5000, () => console.log('Server running'));
+  })
+  .catch((err) => console.error(err));
+
+
+// --- server/models/User.js ---
+const mongoose = require('mongoose');
+
+const UserSchema = new mongoose.Schema({
+  username: String,
+  email: String,
+  password: String,
+  avatar: String,
+  channels: [String]
+});
+
+module.exports = mongoose.model('User', UserSchema);
+
+
+// --- server/models/Video.js ---
+const mongoose = require('mongoose');
+
+const VideoSchema = new mongoose.Schema({
+  videoId: String,
+  title: String,
+  thumbnailUrl: String,
+  description: String,
+  channelId: String,
+  uploader: String,
+  views: Number,
+  likes: Number,
+  dislikes: Number,
+  uploadDate: String,
+  category: String,
+  comments: [String],
+});
+
+module.exports = mongoose.model('Video', VideoSchema);
+
+
+// --- server/models/Comment.js ---
+const mongoose = require('mongoose');
+
+const CommentSchema = new mongoose.Schema({
+  commentId: String,
+  userId: String,
+  videoId: String,
+  text: String,
+  timestamp: Date
+});
+
+module.exports = mongoose.model('Comment', CommentSchema);
+
+
+// --- server/models/Channel.js ---
+const mongoose = require('mongoose');
+
+const ChannelSchema = new mongoose.Schema({
+  channelId: String,
+  channelName: String,
+  owner: String,
+  description: String,
+  channelBanner: String,
+  subscribers: Number,
+  videos: [String]
+});
+
+module.exports = mongoose.model('Channel', ChannelSchema);
+
+
+// --- server/routes/auth.js ---
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const User = require('../models/User');
+const router = express.Router();
+
+router.post('/register', async (req, res) => {
+  try {
+    const hashed = await bcrypt.hash(req.body.password, 10);
+    const user = new User({ ...req.body, password: hashed });
+    await user.save();
+    res.status(201).json(user);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+router.post('/login', async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) return res.status(404).json('User not found');
+    const isMatch = await bcrypt.compare(req.body.password, user.password);
+    if (!isMatch) return res.status(401).json('Invalid credentials');
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    res.status(200).json({ user, token });
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+module.exports = router;
+
