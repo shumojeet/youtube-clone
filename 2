@@ -1,0 +1,35 @@
+const express = require('express');
+const Channel = require('../models/Channel');
+const router = express.Router();
+
+router.get('/', async (req, res) => {
+  const channels = await Channel.find();
+  res.json(channels);
+});
+
+router.get('/:id', async (req, res) => {
+  const channel = await Channel.findOne({ channelId: req.params.id });
+  res.json(channel);
+});
+
+router.post('/', async (req, res) => {
+  const newChannel = new Channel(req.body);
+  await newChannel.save();
+  res.status(201).json(newChannel);
+});
+
+router.put('/:id', async (req, res) => {
+  const updated = await Channel.findOneAndUpdate(
+    { channelId: req.params.id },
+    req.body,
+    { new: true }
+  );
+  res.json(updated);
+});
+
+router.delete('/:id', async (req, res) => {
+  await Channel.findOneAndDelete({ channelId: req.params.id });
+  res.json({ message: 'Deleted' });
+});
+
+module.exports = router;
